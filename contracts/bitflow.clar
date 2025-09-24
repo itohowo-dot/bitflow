@@ -303,3 +303,146 @@
     )
   )
 )
+
+;; Execute Payment Tag Settlement
+(define-public (fulfill-payment-tag (tag-id uint))
+  (let ((tag-data (unwrap! (map-get? payment-tags { id: tag-id }) (err ERR-NOT-FOUND))))
+    (begin
+      ;; Protocol Status Validation
+      (asserts! (not (var-get contract-paused)) (err ERR-UNAUTHORIZED))
+      
+      ;; Input Parameter Validation
+      (asserts! (> tag-id u0) (err ERR-INVALID-AMOUNT))
+      (asserts! (<= tag-id (var-get tag-counter)) (err ERR-NOT-FOUND))
+      
+      ;; Payment Tag State Validation
+      (asserts! (is-eq (get state tag-data) STATE-PENDING) (err ERR-NOT-PENDING))
+      (asserts! (< stacks-block-height (get expires-at tag-data))
+        (err ERR-EXPIRED)
+      )
+      
+      ;; Execute sBTC Transfer
+      (try! (contract-call? SBTC-CONTRACT transfer (get amount tag-data) tx-sender
+        (get recipient tag-data) none
+      ))
+      
+      ;; Update Payment Tag State
+      (map-set payment-tags { id: tag-id }
+        (merge tag-data {
+          state: STATE-PAID,
+          payment-block: (some stacks-block-height),
+        })
+      )
+      
+      ;; Update Protocol Metrics
+      (increment-stat "tags-fulfilled")
+      
+      ;; Emit Fulfillment Event
+      (print {
+        event: "payment-tag-fulfilled",
+        tag-id: tag-id,
+        payer: tx-sender,
+        recipient: (get recipient tag-data),
+        amount: (get amount tag-data),
+        payment-block: stacks-block-height,
+      })
+      
+      (ok tag-id)
+    )
+  )
+)
+
+;; Cancel Payment Request (Creator Only)
+(define-public (cancel-payment-tag (tag-id uint))
+  (let ((tag-data (unwrap! (map-get? payment-tags { id: tag-id }) (err ERR-NOT-FOUND))))
+    (begin
+      ;; Input Parameter Validation
+      (asserts! (> tag-id u0) (err ERR-INVALID-AMOUNT))
+      (asserts! (<= tag-id (var-get tag-counter)) (err ERR-NOT-FOUND))
+      
+      ;; Authorization Validation
+      (asserts! (is-eq tx-sender (get creator tag-data)) (err ERR-UNAUTHORIZED))
+      
+      ;; State Validation
+      (asserts! (is-eq (get state tag-data) STATE-PENDING) (err ERR-NOT-PENDING))
+      
+      ;; Update Payment Tag State
+      (map-set payment-tags { id: tag-id }
+        (merge tag-data { state: STATE-CANCELED })
+      )
+      
+      ;; Update Protocol Metrics
+      (increment-stat "tags-canceled")
+      
+      ;; Emit Cancellation Event
+      (print {
+        event: "payment-tag-canceled",
+        tag-id: tag-id,
+        creator: tx-sender,
+      })
+      
+      (ok tag-id)
+    )
+  )
+)
+
+;; Mark Expired Payment Tag (Public Function)
+(define-public (expire-payment-tag (tag-id uint))
+  (let ((tag-data (unwrap! (map-get? payment-tags { id: tag-id }) (err ERR-NOT-FOUND))))
+    (begin
+      ;; Input Parameter Validation
+      (asserts! (> tag-id u0) (err ERR-INVALID-AMOUNT))
+      (asserts! (<= tag-id (var-get tag-counter)) (err ERR-NOT-FOUND))
+      
+      ;; Expiration State Validation
+      (asserts! (is-eq (get state tag-data) STATE-PENDING) (err ERR-NOT-PENDING))
+      (asserts! (is-tag-expired (get expires-at tag-data)) (err ERR-EXPIRED))
+      
+      ;; Update Payment Tag State
+      (map-set payment-tags { id: tag-id }
+        (merge tag-data { state: STATE-EXPIRED })
+      )
+      
+      ;; Update Protocol Metrics
+      (increment-stat "tags-expired")
+      
+      ;; Emit Expiration Event
+      (print {
+        event: "payment-tag-expired",
+        tag-id: tag-id,
+        expired-by: tx-sender,
+      })
+      
+      (ok tag-id)
+    )
+  )
+)
+
+;; ADMINISTRATIVE FUNCTIONS - PROTOCOL GOVERNANCE
+
+;; Emergency Protocol Pause Toggle (Deployer Only)
+(define-public (toggle-contract-pause)
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT-DEPLOYER) (err ERR-UNAUTHORIZED))
+    (var-set contract-paused (not (var-get contract-paused)))
+    
+    (print {
+      event: "contract-pause-toggled",
+      paused: (var-get contract-paused),
+    })
+    
+    (ok (var-get contract-paused))
+  )
+)
+
+;; Protocol Information & Metadata
+(define-read-only (get-contract-info)
+  (ok {
+    name: "BitFlow - Smart Bitcoin Payment Request Protocol",
+    version: "1.0.0",
+    deployer: CONTRACT-DEPLOYER,
+    total-tags: (var-get tag-counter),
+    paused: (var-get contract-paused),
+    description: "Revolutionary trustless Bitcoin payment infrastructure on Stacks Layer 2",
+  })
+)
