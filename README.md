@@ -139,6 +139,82 @@ BitFlow emits structured logs for external indexers:
 
 ---
 
+## Wallet Integration
+
+BitFlow integrates with **WalletConnect v2** for secure, user-friendly wallet connections on the Stacks blockchain.
+
+### Supported Wallet Operations
+
+BitFlow supports the following Stacks wallet methods via WalletConnect:
+
+| Method | Purpose | Use Case |
+|--------|---------|----------|
+| **`stx_getAddresses`** | Retrieve wallet addresses | Get user's Stacks address for payment requests |
+| **`stx_signTransaction`** | Sign smart contract transactions | Create & fulfill BitFlow payment tags |
+| **`stx_signMessage`** | Sign messages for authentication | Verify user identity off-chain |
+| **`stx_callContract`** | Direct contract method calls | Interact with BitFlow smart contract |
+| **`stx_transferStx`** | Transfer STX/sBTC tokens | Execute payment settlements |
+
+### Key Implementation Details
+
+- **Address Filtering**: Wallets return addresses with `symbol: "STX"`. Filter on prefix `SP` (mainnet) or `ST` (testnet)
+- **Amount Format**: All amounts are in **micro-STX (μSTX)** where 1 STX = 1,000,000 μSTX
+- **Network Support**: Mainnet, Testnet, and Devnet configurations
+- **Transaction Broadcasting**: Optional broadcast parameter for signed transactions
+- **Structured Messages**: SIP-018 domain-bound message signing support
+
+### Getting Started with WalletConnect
+
+1. **Install WalletConnect**
+   ```bash
+   npm install @reown/walletkit @walletconnect/core @walletconnect/utils
+   ```
+
+2. **Get a Project ID**
+   - Visit [WalletConnect Cloud](https://cloud.walletconnect.com)
+   - Create a project and copy your Project ID
+
+3. **Initialize in Your App**
+   ```typescript
+   import { initializeWalletConnect } from './src/walletConnect';
+   
+   await initializeWalletConnect();
+   ```
+
+4. **Use the UI Component**
+   ```typescript
+   import WalletConnectComponent from './src/WalletConnect';
+   
+   <WalletConnectComponent />
+   ```
+
+### Documentation
+
+Complete WalletConnect documentation is available in:
+- **[WALLETCONNECT_SETUP.md](WALLETCONNECT_SETUP.md)** - Quick start guide
+- **[WALLETCONNECT_README.md](WALLETCONNECT_README.md)** - Full API reference
+- **[WALLETCONNECT_GUIDE.md](WALLETCONNECT_GUIDE.md)** - Detailed setup & troubleshooting
+- **[src/walletConnectExamples.ts](src/walletConnectExamples.ts)** - Code examples
+
+### Best Practices (From Stacks Docs)
+
+✅ **Always filter addresses** by `symbol: "STX"` to get Stacks-native addresses  
+✅ **Use micro-STX** (μSTX) for all amounts: 1 BTC = 100,000,000 μSTX  
+✅ **Include network identifier** (mainnet/testnet/devnet) in requests  
+✅ **Store session properties** from `stx_getAddresses` to avoid re-requesting addresses  
+✅ **Handle optional broadcast** - Default is `broadcast: false` for user review  
+✅ **Implement proper error handling** for transaction rejections  
+✅ **Use SIP-018 structured messages** for complex signing scenarios  
+See [STACKS_BEST_PRACTICES.md](STACKS_BEST_PRACTICES.md) for detailed implementation guide.
+### Supported Wallets
+
+- ✅ Xverse Wallet
+- ✅ Leather Wallet
+- ✅ Magic Eden Mobile
+- ✅ Any WalletConnect v2 compatible Stacks wallet
+
+---
+
 ## License
 
 This project is released under the **MIT License**.
