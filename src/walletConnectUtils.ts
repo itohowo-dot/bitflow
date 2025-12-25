@@ -38,12 +38,32 @@ export async function pairWithUri(uri: string): Promise<boolean> {
 
 /**
  * Format Stacks address
+ * Per Stacks docs: SP prefix for mainnet, ST prefix for testnet
  */
 export function formatStacksAddress(address: string): string {
-  if (!address.startsWith("SP") && !address.startsWith("SN")) {
+  if (!address.startsWith("SP") && !address.startsWith("ST") && !address.startsWith("SN")) {
     throw new Error("Invalid Stacks address");
   }
   return address.toUpperCase();
+}
+
+/**
+ * Get network from Stacks address
+ * Per Stacks docs: SP/SN = mainnet, ST = testnet
+ */
+export function getNetworkFromAddress(address: string): "mainnet" | "testnet" {
+  if (address.startsWith("ST")) {
+    return "testnet";
+  }
+  return "mainnet";
+}
+
+/**
+ * Filter wallet addresses by STX symbol
+ * Per Stacks docs: Always filter addresses by symbol: "STX"
+ */
+export function filterStacksAddresses(addresses: any[]): any[] {
+  return addresses.filter((addr) => addr.symbol === "STX");
 }
 
 /**
@@ -55,31 +75,58 @@ export function isValidStacksAddress(address: string): boolean {
 }
 
 /**
- * Convert microBTC to BTC
+ * Convert micro-STX (μSTX) to STX
+ * Per Stacks docs: 1 STX = 1,000,000 μSTX (micro-STX)
  */
-export function microBtcToBtc(microBtc: number): number {
-  return microBtc / 1_000_000;
+export function microStxToStx(microStx: number): number {
+  return microStx / 1_000_000;
 }
 
 /**
- * Convert BTC to microBTC
+ * Convert STX to micro-STX (μSTX)
+ * Per Stacks docs: All amounts in requests use μSTX
+ */
+export function stxToMicroStx(stx: number): number {
+  return Math.round(stx * 1_000_000);
+}
+
+/**
+ * Legacy alias for backward compatibility
+ */
+export function microBtcToBtc(microBtc: number): number {
+  return microStxToStx(microBtc);
+}
+
+/**
+ * Legacy alias for backward compatibility
  */
 export function btcToMicroBtc(btc: number): number {
-  return Math.round(btc * 1_000_000);
+  return stxToMicroStx(btc);
 }
 
 /**
  * Format amount for display
+ * Per Stacks docs: Use micro-STX (μSTX) for all amounts
+ */
+export function formatSTXAmount(
+  microStx: number,
+  decimals: number = 6
+): string {
+  const stx = microStxToStx(microStx);
+  return stx.toLocaleString("en-US", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  }) + " STX";
+}
+
+/**
+ * Legacy alias for backward compatibility
  */
 export function formatBTCAmount(
   microBtc: number,
   decimals: number = 6
 ): string {
-  const btc = microBtcToBtc(microBtc);
-  return btc.toLocaleString("en-US", {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  });
+  return formatSTXAmount(microBtc, decimals);
 }
 
 /**
