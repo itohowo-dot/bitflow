@@ -43,7 +43,7 @@
 
 ;; sBTC Token Contract Integration
 ;; Production mainnet address - update during deployment
-(define-constant SBTC-CONTRACT 'ST1F7QA2MDF17S807EPA36TSS8AMEFY4KA9TVGWXT.sbtc-token)
+(define-constant SBTC-CONTRACT 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token)
 
 ;; Protocol Administrator
 (define-constant CONTRACT-DEPLOYER tx-sender)
